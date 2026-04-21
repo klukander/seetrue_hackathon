@@ -32,14 +32,19 @@ class EyeTrackingReceiver:
                 print("EyeTrackingReceiver: Stop flag detected, exiting...")
                 break
 
+            last_event = None  # preserve latest non-empty event across the batch
             try:
                 while True:  # Process all messages in the buffer
                     text = self.socket.recv_string(flags=zmq.NOBLOCK)
                     if text:
-                        self.parse_data(text)
+                        parsed_event = self.parse_data(text)
+                        if parsed_event:
+                            last_event = parsed_event
                         #print(text, end="\n")
             except zmq.error.Again:
-                pass
+                # Buffer drained — promote the last non-empty event seen
+                if last_event is not None:
+                    self.shared_data["eyeEvent"].value = last_event
 
             except KeyboardInterrupt:
                 break
@@ -49,21 +54,14 @@ class EyeTrackingReceiver:
         print("EyeTrackingReceiver stopped.")
 
     def parse_data(self, data_text):
+        """Parse one message, update shared_data for all fields except eyeEvent,
+        and return the event string (may be empty). The caller is responsible for
+        writing the final eyeEvent so a non-empty event is not clobbered by a
+        later empty-string message in the same drain batch."""
         data = data_text.split(";")
         # print(f"data: {data}")
         try:
-            server_data = {
-                "ID": float(data[0]),
-                "Timestamp": float(data[1]),
-                "PicNum": int(data[11]),
-                "GazeX": float(data[2]),
-                "GazeY": float(data[3]),
-                "PupilSizeLeft": float(data[4]),
-                "PupilSizeRight": float(data[5]),
-                "RScore": float(data[9]),
-                "LScore": float(data[10]),
-                "eyeEvent": str(data[20]),
-            }
+            event = str(data[20])
 
             if data[20] == " NA":
                 if self.eye_detected:
@@ -73,17 +71,18 @@ class EyeTrackingReceiver:
                 if not self.eye_detected:
                     print("eyes are detected, analyze start")
                     self.eye_detected = True
-                self.shared_data["ID"].value = server_data["ID"]
-                self.shared_data["Timestamp"].value = server_data["Timestamp"]
-                self.shared_data["PicNum"].value = server_data["PicNum"]
-                self.shared_data["GazeX"].value = server_data["GazeX"]
-                self.shared_data["GazeY"].value = server_data["GazeY"]
-                self.shared_data["PupilSizeLeft"].value = server_data["PupilSizeLeft"]
-                self.shared_data["PupilSizeRight"].value = server_data["PupilSizeRight"]
-                self.shared_data["RScore"].value = server_data["RScore"]
-                self.shared_data["LScore"].value = server_data["LScore"]
-                self.shared_data["eyeEvent"].value = server_data["eyeEvent"]
+                self.shared_data["ID"].value = float(data[0])
+                self.shared_data["Timestamp"].value = float(data[1])
+                self.shared_data["PicNum"].value = int(data[11])
+                self.shared_data["GazeX"].value = float(data[2])
+                self.shared_data["GazeY"].value = float(data[3])
+                self.shared_data["PupilSizeLeft"].value = float(data[4])
+                self.shared_data["PupilSizeRight"].value = float(data[5])
+                self.shared_data["RScore"].value = float(data[9])
+                self.shared_data["LScore"].value = float(data[10])
+                # eyeEvent is written by receive_data after the batch is drained
+                return event
 
         except Exception as e:
             print(f"Error parsing data: {e}")
-            pass
+        return ""

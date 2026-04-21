@@ -1,6 +1,8 @@
 import cv2
 import collections
 
+VGA_W, VGA_H = 640, 480
+
 
 class process:
     def __init__(self, shared_data, image_buffer_scene):
@@ -33,6 +35,9 @@ class process:
 
     def run(self):
         print("enter run")
+
+        cv2.namedWindow("Video", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Video", VGA_W * 2, VGA_H * 2)
 
         #thread loop
         while not self.shared_data["stop"].value:
