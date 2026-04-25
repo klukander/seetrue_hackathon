@@ -26,6 +26,59 @@ PUPIL_CHANGE_THRESHOLD = 0.08   # 8% pupil diameter change triggers search
 PERSON_BOX_COLOR  = (0, 200, 255)   # amber/gold
 UNKNOWN_BOX_COLOR = (120, 120, 120) # grey for unrecognised faces
 
+# Category → colour mapping
+CATEGORY_COLORS = {
+    "phone":       (255, 100, 50),   # blue
+    "tablet":      (200, 150, 50),   # teal
+    "laptop":      (50, 200, 255),   # orange
+    "desktop":     (50, 150, 200),   # brown-orange
+    "peripheral":  (180, 120, 255),  # pink
+    "audio":       (100, 255, 100),  # green
+    "camera":      (0, 200, 200),    # yellow
+    "wearable":    (255, 50, 150),   # purple
+    "gaming":      (0, 100, 255),    # red
+    "networking":  (200, 200, 50),   # cyan
+    "storage":     (100, 180, 220),  # sand
+    "smart_home":  (50, 255, 200),   # mint
+    "power":       (80, 80, 220),    # dark red
+    "maker":       (0, 180, 180),    # olive
+    "other":       (180, 180, 180),  # grey
+}
+
+# Class name → category
+CLASS_CATEGORY = {}
+_cat_map = {
+    "phone":      ["iPhone", "Samsung Galaxy phone", "Google Pixel phone", "foldable smartphone"],
+    "tablet":     ["iPad Pro", "iPad mini", "Android tablet", "Kindle e-reader", "Microsoft Surface tablet"],
+    "laptop":     ["MacBook laptop", "Dell XPS laptop", "ThinkPad laptop", "gaming laptop", "Chromebook"],
+    "desktop":    ["computer monitor", "curved monitor", "desktop computer tower", "iMac desktop", "Mac mini"],
+    "peripheral": ["computer mouse", "trackball mouse", "mechanical keyboard", "Apple Magic Keyboard",
+                   "laptop trackpad", "webcam", "drawing tablet", "stylus pen", "Apple Pencil", "stream deck"],
+    "audio":      ["AirPods earbuds", "wireless earbuds", "over-ear headphones", "gaming headset",
+                   "Bluetooth speaker", "studio monitor speaker", "podcast microphone", "lavalier microphone"],
+    "camera":     ["digital camera", "DSLR camera", "mirrorless camera", "GoPro action camera", "camera lens", "ring light"],
+    "wearable":   ["Apple Watch", "Garmin smartwatch", "fitness tracker", "VR headset", "Meta Quest"],
+    "gaming":     ["PlayStation controller", "Xbox controller", "Nintendo Switch", "Steam Deck console",
+                   "gaming console", "vr controllers"],
+    "networking": ["wifi router", "network switch", "NAS server"],
+    "storage":    ["USB flash drive", "external hard drive", "portable SSD", "USB-C hub", "SD card", "SD card reader"],
+    "smart_home": ["smart speaker", "Amazon Echo", "Google Nest Hub", "smart thermostat", "smart bulb",
+                   "security camera", "video doorbell"],
+    "power":      ["power bank", "wireless charging pad", "MagSafe charger", "laptop power brick",
+                   "power strip", "surge protector", "USB-C cable", "HDMI cable"],
+    "maker":      ["Raspberry Pi", "Arduino board", "soldering iron", "multimeter", "3D printer",
+                   "drone", "calculator", "laser pointer"],
+}
+
+for cat, classes in _cat_map.items():
+    for cls in classes:
+        CLASS_CATEGORY[cls] = cat
+
+
+def _category_color(class_name: str):
+    cat = CLASS_CATEGORY.get(class_name, "other")
+    return CATEGORY_COLORS[cat]
+
 # Classes we should NOT search for on Google Shopping
 IGNORE_SEARCH_CLASSES = {
     "person", "cat", "dog", "bird", "horse", "sheep",
@@ -264,7 +317,7 @@ class process:
                     box           = (x1, y1, x2, y2),
                     label         = f"{cls_name} {conf:.0%}",
                     class_name    = cls_name,
-                    color         = _class_color(cls_id),
+                    color         = _class_color(cls_name),
                     expires_at    = time.time() + HIGHLIGHT_FADE,
                     link_status   = "searching",
                     product_price = "",
