@@ -96,8 +96,10 @@ def _make_face_detector():
 #
 PEOPLE_REGISTRY: list[dict] = [
 
-    {"name": "Faisal", "age": 22, "role": "Student",
+    {"name": "Faisal", "age": 23, "role": "Student",
          "photo_path": r"C:\\Users\\Pavel\\Pictures\\faisalphoto.jpg"},
+         {"name": "Sai", "age": 26, "role": "Engineer",
+         "photo_path": r"C:\\Users\\Pavel\\Pictures\\saikiran.jpg"},
     # ← ADD YOUR ENTRIES HERE ↓
     # {"name": "Alice Smith",   "age": 29, "role": "Engineer",    "photo_path": "photos/alice.jpg"},
     # {"name": "Bob Johnson",   "age": 45, "role": "Businessman", "photo_path": "photos/bob.jpg"},
