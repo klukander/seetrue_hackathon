@@ -270,6 +270,44 @@ class process:
                 )
         return best
 
+    # ── Face-only detection (triggered by dwell alone) ──────────────────────
+
+    def _run_face_only(self, frame, gaze_x: int, gaze_y: int):
+        """
+        Runs only face detection + identification.
+        Called on every dwell, no pupil change required.
+        Returns a highlight dict or None.
+        """
+        try:
+            face_box = self._find_face_near_gaze(frame, gaze_x, gaze_y)
+            if face_box is None:
+                print("[FaceDetect] No face found near gaze point.")
+                return None
+            print(f"[FaceDetect] Face box: {face_box}")
+            person = self._identify_person(frame, face_box)
+            if person:
+                color = PERSON_BOX_COLOR
+                label = person["name"]
+            else:
+                color = UNKNOWN_BOX_COLOR
+                label = "Unknown person"
+                person = {"name": "Unknown", "age": "?", "role": "?"}
+            return dict(
+                box           = face_box,
+                label         = label,
+                class_name    = "person",
+                color         = color,
+                expires_at    = time.time() + HIGHLIGHT_FADE,
+                kind          = "person",
+                person        = person,
+                link_status   = "ignored",
+                product_price = "",
+            )
+        except Exception as e:
+            print(f"[FaceDetect] ERROR: {e}")
+            import traceback; traceback.print_exc()
+            return None
+
     # ── Gaze-triggered detection: face AND gadget run in parallel ───────────
 
     def _run_detection(self, frame, gaze_x: int, gaze_y: int) -> dict | None:
@@ -525,11 +563,35 @@ class process:
                             current_pupil - self.baseline_pupil
                         ) / self.baseline_pupil
 
-                    if pupil_change_ratio >= PUPIL_CHANGE_THRESHOLD:
-                        snap      = self.image_buffer_scene.copy()
-                        highlight = self._run_detection(snap, GazeX, GazeY)
+                    # ── Two-tier trigger ──────────────────────────────────────
+                    # PERSON:  dwell alone is enough (no pupil change needed)
+                    # GADGET:  requires dwell + pupil change (original behaviour)
+                    #
+                    # We always run face detection on dwell.
+                    # We only run YOLO + price search when pupil also changed.
+                    snap = self.image_buffer_scene.copy()
 
-                        if highlight:
+                    # Always attempt face detection on dwell
+                    face_highlight = self._run_face_only(snap, GazeX, GazeY)
+
+                    # Only attempt gadget detection if pupil changed enough
+                    gadget_highlight = None
+                    if pupil_change_ratio >= PUPIL_CHANGE_THRESHOLD:
+                        gadget_highlight = self._run_yolo(snap, GazeX, GazeY)
+
+                    # Pick best result: face wins if closer to gaze, else gadget
+                    highlight = None
+                    if face_highlight and gadget_highlight:
+                        def _cd(h):
+                            x1,y1,x2,y2 = h["box"]
+                            return self._dist((GazeX,GazeY),((x1+x2)//2,(y1+y2)//2))
+                        highlight = face_highlight if _cd(face_highlight) <= _cd(gadget_highlight) else gadget_highlight
+                    elif face_highlight:
+                        highlight = face_highlight
+                    elif gadget_highlight:
+                        highlight = gadget_highlight
+
+                    if highlight:
                             hcx = (highlight["box"][0]+highlight["box"][2])//2
                             hcy = (highlight["box"][1]+highlight["box"][3])//2
 
