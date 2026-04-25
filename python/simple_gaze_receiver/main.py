@@ -93,7 +93,7 @@ def main():
     #run the scene image receiver 
     process2 = multiprocessing.Process(
         target=scene_image,
-        args=(args.local_ip, args.remote_ip, 3425, False, shm.name, shared_data), 
+        args=(args.local_ip, args.remote_ip, 3425, args.use_remote, shm.name, shared_data), 
     )
     #run the main process that processes the data and visualizes the gaze overlay
     process3 = multiprocessing.Process(
